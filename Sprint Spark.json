@@ -466,7 +466,8 @@
     },
     {
       "parameters": {
-        "jsCode": "// Get the chat ID\nconst chatId = $('Telegram Trigger').first().json.message.from.id\nconst name = $input.first().json.name\nconst url = $input.first().json.shortUrl\n// Use them as needed\nreturn {\n  chat_id: chatId,\n  cardname: name,\n  cardurl: url,\n};"
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Get the chat ID\nconst chatId = $('Telegram Trigger').first().json.message.from.id\nconst name = $json.name\nconst url = $json.shortUrl\n// Use them as needed\nreturn {\n  chat_id: chatId,\n  cardname: name,\n  cardurl: url,\n};"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -802,7 +803,7 @@
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "30b6d2fb-caca-4240-aeaf-c763195c1101",
+  "versionId": "b7c5fea6-463d-438c-8d6b-6cb95d2e871a",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "83f2672e288cb1587c5ac570ad12800d41935f247667f0e6b0b6307b4db77fff"
