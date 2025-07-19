@@ -1,4 +1,4 @@
-![PlanSync-AI Logo](assets/PlanSync-AI%20Logo.png)
+<img src="assets/PlanSync-AI%20Logo.png" alt="PlanSync-AI Logo" width="80" style="float: left; margin-right: 12px;" />
 
 # PlanSync-AI
 
