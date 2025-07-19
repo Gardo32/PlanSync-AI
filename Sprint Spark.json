@@ -1,0 +1,812 @@
+{
+  "name": "Sprint Spark",
+  "nodes": [
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const input = $json.message.text.trim();\n\nif (!input) {\n  throw new Error(\"No GitHub URL provided in chat input.\");\n}\n\n// Extract the GitHub URL (up to the repo name)\nconst urlRegex = /(https?:\\/\\/github\\.com\\/[^\\/]+\\/[^\\/\\s\\{]+)/;\nconst urlMatch = input.match(urlRegex);\n\nif (!urlMatch) {\n  throw new Error(\"Invalid GitHub URL format. Expected format: https://github.com/owner/repo\");\n}\n\nconst repoUrl = urlMatch[1];\n\n// Extract the owner and repo name\nconst repoRegex = /github\\.com\\/([^\\/]+)\\/([^\\/\\s]+)/;\nconst repoMatch = repoUrl.match(repoRegex);\n\nif (!repoMatch) {\n  throw new Error(\"Could not extract owner and repo from URL.\");\n}\n\n// Extract number in curly braces, like {6}\nconst numberRegex = /\\{(\\d+)\\}/;\nconst numberMatch = input.match(numberRegex);\n\nreturn {\n  owner: repoMatch[1],\n  repo: repoMatch[2],\n  repoUrl,\n  number: numberMatch ? parseInt(numberMatch[1], 10) : null\n};\n"
+      },
+      "id": "0bc7a03b-b4ae-42f9-a3eb-d3a7c33e3283",
+      "name": "Set Repo Info",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -760,
+        150
+      ]
+    },
+    {
+      "parameters": {
+        "command": "=tempDir=\"/tmp/repo_$(date +%s)\"\nmkdir -p \"$tempDir\"\necho $tempDir > /tmp/tempDir.txt"
+      },
+      "id": "b2790f0b-e5e4-4463-aca0-62bc82acc205",
+      "name": "Create Temp Directory",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        -540,
+        150
+      ]
+    },
+    {
+      "parameters": {
+        "command": "=git clone {{ $('Set Repo Info').item.json.repoUrl }} {{ $('Create temporary Directory Variable').item.json.tempDir }}/{{ $('Set Repo Info').item.json.repo }} "
+      },
+      "id": "0999f716-953d-4a30-8c92-3abf7d6ccd5c",
+      "name": "Git Clone Repo",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        560,
+        -75
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Analyze the full code of the following files that have recently changed. Categorize the required actions into three labels: 'Bug', 'Feature', and 'Technical Debt'. For each item, generate:\n\n- a title **starting with** a story point estimation in the format `(ST:<number>)`, where 1 is trivial and 10 is extremely complex or severe.\n- a short but clear description.\n\nIMPORTANT: You must generate a maximum of {{ $json.number }} task items in total, distributed across all categories. Do not exceed this limit.\n\nContent for Analysis:\n{{ $json.promptInput }}\n\nRespond with a JSON object with exactly three keys: 'Bug', 'Feature', and 'Technical Debt'. Each must be an array of objects with a 'title' and 'description'.\n",
+        "options": {
+          "systemMessage": "You are an expert scrum master AI. Your task is to analyze the full source code of recently changed files to prepare a sprint planning board. You must output your response in a valid JSON format and strictly adhere to the maximum item limit provided in the prompt."
+        }
+      },
+      "id": "5df6e4ad-744b-4661-a6e2-6e2fb43687f2",
+      "name": "AI Sprint Planner",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.9,
+      "position": [
+        2320,
+        150
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.all();\n\nconst config = input[0];  // contains listId and labelIds\nconst rawOutput = input[1].json.output || '';\n\n// Extract JSON inside triple backticks ``` or ```json\nconst match = rawOutput.match(/```(?:json)?\\s*([\\s\\S]*?)```/);\n\nlet jsonString;\n\nif (match) {\n  jsonString = match[1];\n} else {\n  jsonString = rawOutput.trim();\n}\n\nlet parsed;\ntry {\n  parsed = JSON.parse(jsonString);\n} catch (err) {\n  throw new Error('Invalid JSON format in AI output');\n}\n\nconst labelIdMap = {\n  Bug: config.json.labelIds.Bug,\n  Feature: config.json.labelIds.Feature,\n  'Technical Debt': config.json.labelIds.TechnicalDebt,\n};\n\nconst listId = config.json.listId;\n\nconst formatCard = (item, label) => ({\n  json: {\n    name: item.title,\n    desc: item.description,\n    idLabels: [labelIdMap[label]],\n    idList: listId\n  }\n});\n\nconst cards = [];\n\nfor (const label of Object.keys(labelIdMap)) {\n  const items = parsed[label];\n  if (Array.isArray(items)) {\n    for (const item of items) {\n      cards.push(formatCard(item, label));\n    }\n  }\n}\n\nreturn cards;\n"
+      },
+      "id": "06feef41-b847-44fe-8be9-cdf4824243ff",
+      "name": "Parse AI Output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2900,
+        -25
+      ]
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-flash",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        2400,
+        370
+      ],
+      "id": "a8b60050-b9de-4700-b1df-ddf0f14240e7",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "02L2CJEV8D6cSwqt",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const filePathsString = $input.first().json.stdout;\n\n// Ensure the input is a string and not empty\nif (typeof filePathsString !== 'string' || filePathsString.trim() === '') {\n  return [];\n}\n\n// Split by newline and filter out hidden directories (starting with `.`)\n// and also filter out paths containing any directory starting with '@eslint' or '@floating-ui'\nconst pathsArray = filePathsString\n  .split('\\n')\n  .map(path => path.trim())\n  .filter(path => {\n    if (path === '') return false;\n\n    const parts = path.split('/');\n\n    // Exclude if any segment starts with '.' (hidden), '@eslint', or '@floating-ui'\n    return !parts.some(part =>\n      part.startsWith('.') ||\n      part.startsWith('@eslint') ||\n      part.startsWith('@floating-ui')\n    );\n  });\n\n// Map each valid path to a new item\nconst items = pathsArray.map(path => ({\n  json: {\n    filePath: path\n  }\n}));\n\nreturn items;\n"
+      },
+      "id": "a61210e6-63da-44d2-9b1a-aced23765f9c",
+      "name": "Split String to Items",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1000,
+        -75
+      ]
+    },
+    {
+      "parameters": {
+        "command": "=if [ -d \"{{ $json.tempDir }}\" ]; then echo 'exists'; else echo 'missing'; fi"
+      },
+      "id": "bd93ef60-7964-47bc-94f5-3835d1c1d869",
+      "name": "Check Dir Exists",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        -100,
+        -75
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.stdout.trim() }}",
+              "value2": "missing"
+            }
+          ]
+        }
+      },
+      "id": "c635e93a-5b13-4308-ba74-78dbabc8b6cb",
+      "name": "If Not Exists",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        120,
+        -75
+      ]
+    },
+    {
+      "parameters": {
+        "command": "=mkdir -p \"{{ $('Create temporary Directory Variable').item.json.tempDir }}\""
+      },
+      "id": "bcabd422-e11c-4b67-b5d8-5b47981fee7c",
+      "name": "Create Temp Dir",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        340,
+        -150
+      ]
+    },
+    {
+      "parameters": {
+        "command": "=cd {{ $('Create temporary Directory Variable').item.json.tempDir }}/{{ $('Set Repo Info').item.json.repo }} && \\\ngit diff --name-only HEAD~5 HEAD\n"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        780,
+        -75
+      ],
+      "id": "947c786e-9092-40e7-82e0-16e5e65cc0c3",
+      "name": "Execute Command"
+    },
+    {
+      "parameters": {
+        "fileSelector": "={{ $('Create temporary Directory Variable').item.json.tempDir }}/{{ $('Set Repo Info').item.json.repo }}/{{ $json.filePath }}",
+        "options": {
+          "fileName": "={{ $json.filePath }}"
+        }
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        1220,
+        -75
+      ],
+      "id": "9e4968db-b56c-4209-a041-6a61bcbc2239",
+      "name": "Read/Write Files from Disk",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const tempDir = `/tmp/repo_${Date.now()}`;\nreturn [{\n  json: {\n    tempDir,\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -320,
+        150
+      ],
+      "id": "8fa63737-efe0-48dc-92a1-11333acd2dbf",
+      "name": "Create temporary Directory Variable"
+    },
+    {
+      "parameters": {
+        "jsCode": "const fileEntries = Object.entries($json.files || {});\nlet combinedText = '';\n\nfor (const [fileName, content] of fileEntries) {\n  combinedText += `FILE: ${fileName}\\n---\\n${content}\\n\\n====================\\n\\n`;\n}\n\nreturn [\n  {\n    json: {\n      promptInput: combinedText,\n      number: $('Set Repo Info').first().json.number\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2100,
+        150
+      ],
+      "id": "4bbe477a-7f7c-490e-b794-8501499c3604",
+      "name": "Data Aggregation"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chat_id }}",
+        "text": "=✅ New Trello card created: [{{ $json.cardname.replace(/([_*[\\]()~\\>#+=|{}.!-])/g, '\\\\$1') }}]({{ $json.cardurl }})",
+        "additionalFields": {
+          "parse_mode": "MarkdownV2"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        3560,
+        -25
+      ],
+      "id": "f3f8fbfd-0e78-487a-88bb-ae90cc680db8",
+      "name": "Send a text message",
+      "webhookId": "386c479e-acbe-4fa9-97cf-418f967c3317",
+      "credentials": {
+        "telegramApi": {
+          "id": "oo8D6fiKN0nnHiKt",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {
+          "chatIds": "6625553147"
+        }
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -980,
+        150
+      ],
+      "id": "7cb73a6a-fe26-4098-a031-cf357931a616",
+      "name": "Telegram Trigger",
+      "webhookId": "48c85197-1f9a-4794-b031-be308cffb9bf",
+      "credentials": {
+        "telegramApi": {
+          "id": "oo8D6fiKN0nnHiKt",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "command": "=rm -rf {{ $json.tempDir }}"
+      },
+      "id": "989da5b7-aed5-4707-ad6b-c011115fb998",
+      "name": "Delete Temp Dir1",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        4000,
+        150
+      ]
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        3780,
+        150
+      ],
+      "id": "8d04155f-705a-4eb7-858f-de56f58e0cc6",
+      "name": "Merge1"
+    },
+    {
+      "parameters": {
+        "listId": "={{ $json.idList }}",
+        "name": "={{ $json.name }}",
+        "description": "={{ $json.desc }}",
+        "additionalFields": {
+          "idLabels": "={{ $json.idLabels[0] }}"
+        }
+      },
+      "id": "049b1272-5262-4fd6-a368-387ae1da73fc",
+      "name": "Create Trello Card",
+      "type": "n8n-nodes-base.trello",
+      "typeVersion": 1,
+      "position": [
+        3120,
+        -25
+      ],
+      "credentials": {
+        "trelloApi": {
+          "id": "JeWOWtn96v4fzP96",
+          "name": "Trello account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return {\n  listId: 'YOUR-LIST-ID',\n  labelIds: {\n    Bug: 'BUG-LABEL-ID',\n    TechnicalDebt: 'TD-LABEL-ID',\n    Feature: 'FEATURE-LABEL-ID'\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2390,
+        -200
+      ],
+      "id": "0bc85545-b8a5-4284-aeaf-7e7cd1d53af5",
+      "name": "Variables"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        2680,
+        -25
+      ],
+      "id": "59535d7b-314f-4d2d-b1dd-80008453e24b",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get the files data and ensure it's iterable\nconst inputData = $input.first().json;\nlet items;\n\n// Handle different possible data structures\nif (inputData.files && typeof inputData.files === 'object') {\n  // If files is an object, convert to array of entries\n  if (Array.isArray(inputData.files)) {\n    items = inputData.files;\n  } else {\n    // Convert object to array of file entries\n    items = Object.entries(inputData.files).map(([path, content]) => ({\n      filePath: path,\n      content: content,\n      fileExtension: path.split('.').pop(),\n      mimeType: 'text/plain' // default fallback\n    }));\n  }\n} else {\n  // Fallback to empty array if no valid files found\n  items = [];\n}\n\nconst files = {};\nconst allowedMimePrefixes = [\n  'text/',\n  'application/json',\n  'application/javascript',\n];\nconst allowedExtensions = [\n  'js', 'ts', 'tsx', 'jsx', 'vue',           // JS/TS + Vue files\n  'json', 'html', 'css', 'scss', 'less',     // Web frontend stack\n  'md', 'txt', 'config',                     // Docs\n  'env', 'yaml', 'yml'                       // Configs\n];\nconst unimportantConfigs = [\n  'package-lock.json',\n  'yarn.lock',\n  'pnpm-lock.yaml',\n  '.editorconfig',\n  '.gitignore',\n  '.gitattributes',\n  '.npmrc',\n  '.nvmrc',\n  '.env',\n  '.env.example',\n  '.prettierrc',\n  '.prettierrc.js',\n  '.eslintrc',\n  '.eslintrc.js',\n  'tsconfig.json',\n  'jsconfig.json',\n  'babel.config.js',\n  'jest.config.js',\n  'webpack.config.js',\n  'rollup.config.js',\n  'vite.config.js',\n  'eslint.config.js',\n  'commitlint.config.js',\n  'postcss.config.js',\n  'tailwind.config.js',\n  'license',\n  'readme.md',\n  'readme',\n  'next-env.d.ts',\n  'index.d.ts',\n  'index.js'\n];\nconst nonUsefulPatterns = [\n  'array-factory.js',\n  'config-array',\n  'config-dependency',\n  'extracted-config',\n  'ignore-pattern',\n  'override-tester',\n  'flat-compat',\n  'index-universal',\n  'ajv.js',\n  'config-ops',\n  'naming.js',\n  'relative-module-resolver',\n  'test-fixtures',\n  '__tests__',\n  '__mocks__',\n];\nfunction containsNonUsefulPattern(filename) {\n  return nonUsefulPatterns.some(pattern => filename.includes(pattern));\n}\n\nfor (const item of items) {\n  // Access properties directly from item, not item.json\n  const fullPath = item.filePath || item.fileName || 'unnamed';\n  const lowerFullPath = fullPath.toLowerCase();\n  \n  // Skip source maps and compiled mjs files\n  if (lowerFullPath.endsWith('.map') || lowerFullPath.endsWith('.mjs')) continue;\n  \n  // Skip known unimportant files\n  const fileNameOnly = fullPath.split('/').pop().toLowerCase();\n  if (unimportantConfigs.includes(fileNameOnly)) continue;\n  \n  // Skip based on non-useful patterns\n  if (containsNonUsefulPattern(lowerFullPath)) continue;\n  \n  // Access extension and mimeType directly from item\n  const extension = (item.fileExtension || '').toLowerCase();\n  const mimeType = item.mimeType || '';\n  \n  const isMimeAllowed = allowedMimePrefixes.some(prefix => mimeType.startsWith(prefix));\n  const isExtensionAllowed = allowedExtensions.some(ext => lowerFullPath.endsWith('.' + ext));\n  \n  if (!isMimeAllowed && !isExtensionAllowed) continue;\n  \n  const parts = fullPath.split('/');\n  const relativePath = parts.length > 1 ? parts.slice(1).join('/') : parts[0];\n  \n  // Check for content in multiple possible locations and handle text content\n  let content = '[No content available]';\n  \n  if (item.binary && item.binary.data) {\n    // Handle base64 binary data\n    try {\n      const buffer = Buffer.from(item.binary.data, 'base64');\n      content = buffer.toString('utf-8');\n    } catch (error) {\n      content = '[Error decoding binary content]';\n    }\n  } else if (item.content) {\n    // Handle direct text content\n    content = item.content;\n  } else if (item.text) {\n    // Handle text property\n    content = item.text;\n  }\n  \n  files[relativePath] = content;\n}\n\nreturn [\n  {\n    json: {\n      files\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1880,
+        -50
+      ],
+      "id": "5b153d9f-f37b-481c-8e32-9d294f49c568",
+      "name": "Code separation & filtering (JavaScript)"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nconst files = {};\n\nconst allowedMimePrefixes = [\n  'text/',\n  'application/json',\n  'application/xml',\n  'application/javascript',\n];\n\nconst allowedExtensions = [\n  'py',                  // Python source\n  'html', 'jinja', 'jinja2', // Templates\n  'js', 'css',           // Static assets\n  'json', 'yml', 'yaml', // Config files\n  'env', 'ini', 'toml',  // Environment/config\n  'md', 'txt',           // Docs\n];\n\nconst unimportantConfigs = [\n  '.gitignore',\n  '.env',\n  '.env.example',\n  '__init__.py',\n  '.editorconfig',\n  'pyvenv.cfg',\n  'Pipfile.lock',\n  'poetry.lock',\n  'requirements-dev.txt',\n  'requirements.txt',\n  'README.md',\n  'readme.md',\n  'readme',\n  'manage.py',\n  'setup.py',\n  'setup.cfg',\n  'pyproject.toml',\n  'tox.ini',\n  'mypy.ini',\n  '.pylintrc',\n  '.flake8',\n  'test_settings.py',\n  'settings_local.py',\n];\n\nconst nonUsefulPatterns = [\n  '__pycache__',\n  '/migrations/',\n  '/static/admin/',\n  '/venv/',\n  '/env/',\n  'test_',            // test files\n  '_test.py',\n  '/tests/',\n  '.pyc',             // compiled Python\n  '.pyo',\n];\n\nfunction containsNonUsefulPattern(filename) {\n  return nonUsefulPatterns.some(pattern => filename.includes(pattern));\n}\n\nfor (const item of items) {\n  const fullPath = item.json.filePath || item.json.fileName || 'unnamed';\n  const lowerFullPath = fullPath.toLowerCase();\n\n  if (lowerFullPath.endsWith('.pyc') || lowerFullPath.endsWith('.pyo')) continue;\n\n  const fileNameOnly = fullPath.split('/').pop().toLowerCase();\n  if (unimportantConfigs.includes(fileNameOnly)) continue;\n\n  if (containsNonUsefulPattern(lowerFullPath)) continue;\n\n  const extension = (item.json.fileExtension || '').toLowerCase();\n  const mimeType = item.json.mimeType || '';\n\n  const isMimeAllowed = allowedMimePrefixes.some(prefix => mimeType.startsWith(prefix));\n  const isExtensionAllowed = allowedExtensions.some(ext => lowerFullPath.endsWith('.' + ext));\n\n  if (!isMimeAllowed && !isExtensionAllowed) continue;\n\n  const parts = fullPath.split('/');\n  const relativePath = parts.length > 1 ? parts.slice(1).join('/') : parts[0];\n\n  if (item.binary && item.binary.data && item.binary.data.data) {\n    const buffer = Buffer.from(item.binary.data.data, 'base64');\n    const content = buffer.toString('utf-8');\n    files[relativePath] = content;\n  } else {\n    files[relativePath] = '[No binary content]';\n  }\n}\n\nreturn [\n  {\n    json: {\n      files\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1880,
+        150
+      ],
+      "id": "c157a3f8-ad3c-45f2-b3cd-06832100feca",
+      "name": "Code separation & filtering (Python)"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nconst files = {};\n\nconst allowedMimePrefixes = [\n  'text/',\n  'application/json',\n  'application/xml',\n  'application/javascript',\n];\n\nconst allowedExtensions = [\n  // Programming languages\n  'go', 'rs', 'java', 'kt', 'scala',\n  'c', 'cpp', 'h', 'hpp', 'cs',\n  'php', 'rb', 'sh', 'bash', 'bat', 'ps1',\n\n  // Templating and UI\n  'html', 'xml', 'css', 'scss', 'less',\n  'ejs', 'hbs', 'handlebars', 'jinja', 'jinja2',\n\n  // Config / Infra / CI\n  'env', 'ini', 'toml', 'yaml', 'yml',\n  'tf', 'tfvars', 'dockerfile',\n  'conf', 'cfg', 'json',\n\n  // CI/CD\n  'groovy', 'xml', 'yml', 'yaml',\n\n  // Data / Database\n  'sql',\n\n  // Docs\n  'md', 'txt', 'rst', 'adoc',\n];\n\nconst unimportantConfigs = [\n  '.gitignore',\n  '.editorconfig',\n  '.gitattributes',\n  '.dockerignore',\n  '.env',\n  '.env.example',\n  'readme.md', 'readme', 'license',\n  'terraform.lock.hcl',\n  'terraform.tfstate',\n  'terraform.tfstate.backup',\n  '.terraform.lock.hcl',\n  '.DS_Store',\n  'Thumbs.db',\n];\n\nconst nonUsefulPatterns = [\n  '__pycache__', '/venv/', '/env/',\n  '/build/', '/dist/', '/out/', '/target/', '/bin/', '/obj/',\n\n  // Common compiled/temp/test folders\n  '/node_modules/',\n  '/vendor/',\n  '/.next/',\n  '/.git/',\n  '/.idea/', '/.vscode/',\n  '/.pytest_cache/',\n  'test_', '_test.', '/tests/',\n\n  // File types or names that are binary or noisy\n  '.lock',\n  '.class', '.exe', '.dll', '.so', '.o', '.a', '.zip', '.tar', '.gz', '.rar',\n];\n\nfunction containsNonUsefulPattern(filename) {\n  return nonUsefulPatterns.some(pattern => filename.includes(pattern));\n}\n\nfor (const item of items) {\n  const fullPath = item.json.filePath || item.json.fileName || 'unnamed';\n  const lowerFullPath = fullPath.toLowerCase();\n\n  const fileNameOnly = fullPath.split('/').pop().toLowerCase();\n  if (unimportantConfigs.includes(fileNameOnly)) continue;\n  if (containsNonUsefulPattern(lowerFullPath)) continue;\n\n  const extension = (item.json.fileExtension || '').toLowerCase();\n  const mimeType = item.json.mimeType || '';\n\n  const isMimeAllowed = allowedMimePrefixes.some(prefix => mimeType.startsWith(prefix));\n  const isExtensionAllowed = allowedExtensions.some(ext => lowerFullPath.endsWith('.' + ext)) ||\n                             allowedExtensions.includes(extension);\n\n  if (!isMimeAllowed && !isExtensionAllowed) continue;\n\n  const parts = fullPath.split('/');\n  const relativePath = parts.length > 1 ? parts.slice(1).join('/') : parts[0];\n\n  if (item.binary && item.binary.data && item.binary.data.data) {\n    const buffer = Buffer.from(item.binary.data.data, 'base64');\n    const content = buffer.toString('utf-8');\n    files[relativePath] = content;\n  } else {\n    files[relativePath] = '[No binary content]';\n  }\n}\n\nreturn [\n  {\n    json: {\n      files\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1880,
+        350
+      ],
+      "id": "bdddcde2-caf2-472f-8c5a-38045b20331b",
+      "name": "Code separation & filtering (Others)"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst codeFiles = {};\n\nlet hasJS = false;\nlet hasPython = false;\nfor (const item of items) {\n  // Skip files with video, image, font MIME types, or .woff extension\n  const mimeType = item.json.mimeType || '';\n  const fileExt = (item.json.fileExtension || '').toLowerCase();\n  if (mimeType.startsWith('video/') || mimeType.startsWith('image/') || mimeType.startsWith('font/') || \n      fileExt === 'woff' || fileExt === 'woff2') {\n    continue;\n  }\n  \n  const filePath = item.json.filePath || item.json.fileName || 'unnamed';\n  const relativePath = filePath.split('/').slice(1).join('/') || filePath;\n  const ext = fileExt;\n  if (item.binary?.data?.data) {\n    const buffer = Buffer.from(item.binary.data.data, 'base64');\n    const content = buffer.toString('utf-8');\n    codeFiles[relativePath] = content;\n    if (['js', 'ts', 'tsx', 'jsx'].includes(ext)) hasJS = true;\n    if (ext === 'py') hasPython = true;\n  }\n}\nlet classification = 'other';\nif (hasPython) {\n  classification = 'python';\n} else if (hasJS) {\n  classification = 'js';\n}\nreturn [\n  {\n    json: {\n      classification,\n      files: codeFiles\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1440,
+        -75
+      ],
+      "id": "728561f9-8881-4201-a1d8-b7e035949e55",
+      "name": "Binary to text"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.classification }}",
+                    "rightValue": "js",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "9e740e83-a608-4ff9-99a8-11d61863612c"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "21e0a573-0229-441d-be7d-92ac847cfa88",
+                    "leftValue": "={{ $json.classification }}",
+                    "rightValue": "python",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "2fcaa73d-b806-4487-a4df-7a4f9fbf8641",
+                    "leftValue": "={{ $json.classification }}",
+                    "rightValue": "other",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        1660,
+        175
+      ],
+      "id": "d86e25a1-4509-4d7f-bb29-55c3bc778eb6",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get the chat ID\nconst chatId = $('Telegram Trigger').first().json.message.from.id\nconst name = $input.first().json.name\nconst url = $input.first().json.shortUrl\n// Use them as needed\nreturn {\n  chat_id: chatId,\n  cardname: name,\n  cardurl: url,\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3340,
+        -25
+      ],
+      "id": "3388e68f-56b4-4827-8be8-c8f284c64487",
+      "name": "Set Variables"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Set Repo Info": {
+      "main": [
+        [
+          {
+            "node": "Create Temp Directory",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Temp Directory": {
+      "main": [
+        [
+          {
+            "node": "Create temporary Directory Variable",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Git Clone Repo": {
+      "main": [
+        [
+          {
+            "node": "Execute Command",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Sprint Planner": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Parse AI Output": {
+      "main": [
+        [
+          {
+            "node": "Create Trello Card",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Sprint Planner",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split String to Items": {
+      "main": [
+        [
+          {
+            "node": "Read/Write Files from Disk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Dir Exists": {
+      "main": [
+        [
+          {
+            "node": "If Not Exists",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Not Exists": {
+      "main": [
+        [
+          {
+            "node": "Create Temp Dir",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Git Clone Repo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Temp Dir": {
+      "main": [
+        [
+          {
+            "node": "Git Clone Repo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Command": {
+      "main": [
+        [
+          {
+            "node": "Split String to Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read/Write Files from Disk": {
+      "main": [
+        [
+          {
+            "node": "Binary to text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create temporary Directory Variable": {
+      "main": [
+        [
+          {
+            "node": "Check Dir Exists",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Data Aggregation": {
+      "main": [
+        [
+          {
+            "node": "AI Sprint Planner",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Set Repo Info",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a text message": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge1": {
+      "main": [
+        [
+          {
+            "node": "Delete Temp Dir1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Trello Card": {
+      "main": [
+        [
+          {
+            "node": "Set Variables",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Variables": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Parse AI Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code separation & filtering (JavaScript)": {
+      "main": [
+        [
+          {
+            "node": "Data Aggregation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Binary to text": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Variables",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Code separation & filtering (JavaScript)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code separation & filtering (Python)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code separation & filtering (Others)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code separation & filtering (Others)": {
+      "main": [
+        [
+          {
+            "node": "Data Aggregation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code separation & filtering (Python)": {
+      "main": [
+        [
+          {
+            "node": "Data Aggregation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Variables": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "30b6d2fb-caca-4240-aeaf-c763195c1101",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "83f2672e288cb1587c5ac570ad12800d41935f247667f0e6b0b6307b4db77fff"
+  },
+  "id": "WFWPnLJjH5Ijy0wp",
+  "tags": []
+}
