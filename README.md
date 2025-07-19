@@ -33,13 +33,3 @@ PlanSync-AI is composed of modular components, each designed to automate a speci
 - Telegram API (notifications)
 - Bash, Node.js (command and code nodes)
 
----
-
-## 📁 Structure
-
-```bash
-PlanSync-AI/
-├── modules/
-│   └── Sprint-Spark.md         # Documentation for the first module
-├── README.md                   # This file
-└── workflows/                  # n8n JSON workflows (soon)
