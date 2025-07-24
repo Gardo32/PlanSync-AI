@@ -37,14 +37,23 @@ PlanSync-AI is composed of modular components, each designed to automate key Scr
 
 ## 🧰 Tech Stack
 
-### NLND
-* **N** — Next.js (frontend framework)
-* **L** — LangChain (LLM orchestration)
-* **N** — n8n (workflow automation)
-* **D** — Docker (containerization & deployment)
+### 🚀 MADE Stack
+**Modern Applications with Docker & Events**
 
-**Tagline:**
-*“Build modern frontends, orchestrate AI, automate workflows, and deploy anywhere — the NLND stack covers it all.”*
+- **M** — Markup-first Frontend  
+  _Next.js, React, Astro — build fast, render smart_
+
+- **A** — Automation Layer  
+  _n8n, Make, LangChain — orchestrate workflows and logic_
+
+- **D** — Dockerized Deployment  
+  _Containerization, scaling, and platform portability_
+
+- **E** — Events via APIs & Webhooks  
+  _Glue between services — trigger-driven, real-time communication_
+
+**Tagline:**  
+*“Build modern frontends, automate with APIs, connect everything through webhooks, and deploy anywhere — the MADE stack has you covered.”*
 
 ---
 
