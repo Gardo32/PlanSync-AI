@@ -1,0 +1,620 @@
+{
+  "name": "Standup Synth",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {}
+          ]
+        }
+      },
+      "id": "a5966c0e-7f34-420b-a0c0-9aaa979265e8",
+      "name": "Run every weekday at 9am",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "position": [
+        -520,
+        700
+      ],
+      "typeVersion": 1.2
+    },
+    {
+      "parameters": {
+        "content": "### Step 1: Fetch GitHub Activity\nThese nodes run in parallel to query the GitHub API for all commits, pull requests, issues, and reviews from the last 24 hours. \n\n**Setup:** \n- Add your GitHub credentials.\n- Replace `<YOUR_REPO_OWNER>` and `<YOUR_REPO_NAME>` with your repository details.",
+        "height": 260,
+        "width": 300,
+        "color": 7
+      },
+      "id": "93dd64bc-d4bb-46f7-843b-56d68323b5f7",
+      "name": "Sticky Note1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        60,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### Step 2: Aggregate Data\nThis Code node processes the raw data from all four GitHub nodes. It intelligently filters and groups all activities by team member, preparing a clean JSON object for the AI.",
+        "width": 300
+      },
+      "id": "d7a3427f-3ac5-45d1-9cd5-adac491f0f9b",
+      "name": "Sticky Note2",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        840,
+        380
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### Step 3: Generate AI Summary\nGoogle Gemini takes the structured data and transforms it into a smart, conversational daily standup report. It highlights accomplishments, ongoing work, and potential blockers, making the information easy to digest.\n\n**Setup:**\n- Add your Google Gemini API credentials.",
+        "height": 220,
+        "width": 300,
+        "color": 5
+      },
+      "id": "49f4874a-a36f-4559-8a7d-3f69c00696e4",
+      "name": "Sticky Note3",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1820,
+        440
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### Step 4: Deliver to Telegram\nThe final AI-generated digest is delivered to your team's Telegram channel. The report is formatted with Markdown and emojis for readability, replacing the need for a live meeting.\n\n**Setup:**\n- Add your Telegram credentials.\n- Set your team's Chat ID.",
+        "height": 240,
+        "width": 300,
+        "color": 4
+      },
+      "id": "20080be6-2a5c-46ae-ac03-26ed9b0df980",
+      "name": "Sticky Note4",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2520,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -300,
+        900
+      ],
+      "id": "b0ad86f5-e1c5-4e78-9ac2-d2d775d8f756",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "jsCode": "return {\n'Start variable': 'https://github.com/chartdb/chartdb {5}'\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -300,
+        700
+      ],
+      "id": "3ca51146-b1a0-4eca-96c7-2daae8323af4",
+      "name": "Variables"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json['Start variable'];\n\nif (!input) {\n  throw new Error(\"No GitHub URL provided in chat input.\");\n}\n\n// Extract the GitHub URL (up to the repo name)\nconst urlRegex = /(https?:\\/\\/github\\.com\\/[^\\/]+\\/[^\\/\\s\\{]+)/;\nconst urlMatch = input.match(urlRegex);\n\nif (!urlMatch) {\n  throw new Error(\"Invalid GitHub URL format. Expected format: https://github.com/owner/repo\");\n}\n\nconst repoUrl = urlMatch[1];\n\n// Extract the owner and repo name\nconst repoRegex = /github\\.com\\/([^\\/]+)\\/([^\\/\\s]+)/;\nconst repoMatch = repoUrl.match(repoRegex);\n\nif (!repoMatch) {\n  throw new Error(\"Could not extract owner and repo from URL.\");\n}\n\n// Extract number in curly braces, like {6}\nconst numberRegex = /\\{(\\d+)\\}/;\nconst numberMatch = input.match(numberRegex);\n\nreturn {\n  owner: repoMatch[1],\n  repo: repoMatch[2],\n  repoUrl,\n  number: numberMatch ? parseInt(numberMatch[1], 10) : null,\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -80,
+        800
+      ],
+      "id": "9d72531c-936d-4641-a454-d371976d5d9e",
+      "name": "Github URL to items"
+    },
+    {
+      "parameters": {
+        "resource": "repository",
+        "owner": {
+          "__rl": true,
+          "value": "={{ $json.owner }}",
+          "mode": "name"
+        },
+        "repository": {
+          "__rl": true,
+          "value": "={{ $json.repo }}",
+          "mode": "name"
+        },
+        "limit": "={{ $json.number }}",
+        "getRepositoryIssuesFilters": {}
+      },
+      "type": "n8n-nodes-base.github",
+      "typeVersion": 1.1,
+      "position": [
+        140,
+        800
+      ],
+      "id": "45ad7c95-524b-4c1b-97d1-f0cc640183cb",
+      "name": "Get issues of a repository",
+      "webhookId": "9d587bd3-df55-4526-a5a2-1bebc685d94c",
+      "credentials": {
+        "githubApi": {
+          "id": "UBknuuPCRBeG2Yfw",
+          "name": "GitHub account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "repository",
+        "operation": "getPullRequests",
+        "owner": {
+          "__rl": true,
+          "value": "={{ $json.owner }}",
+          "mode": "name"
+        },
+        "repository": {
+          "__rl": true,
+          "value": "={{ $json.repo }}",
+          "mode": "name"
+        },
+        "limit": "={{ $json.number }}",
+        "getRepositoryPullRequestsFilters": {}
+      },
+      "type": "n8n-nodes-base.github",
+      "typeVersion": 1.1,
+      "position": [
+        140,
+        1000
+      ],
+      "id": "09b26767-9127-4432-9c23-e9d5c430df36",
+      "name": "Get pull requests of a repository",
+      "webhookId": "9d587bd3-df55-4526-a5a2-1bebc685d94c",
+      "credentials": {
+        "githubApi": {
+          "id": "UBknuuPCRBeG2Yfw",
+          "name": "GitHub account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "=https://api.github.com/repos/{{ $json.owner }}/{{ $json.repo }}/commits?per_page={{ $json.number }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "githubApi",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        140,
+        600
+      ],
+      "id": "664e6d75-148f-45c9-83d9-b3a06d1c5b60",
+      "name": "Get github commit",
+      "credentials": {
+        "githubApi": {
+          "id": "UBknuuPCRBeG2Yfw",
+          "name": "GitHub account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "numberInputs": 3
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        360,
+        800
+      ],
+      "id": "0b129233-5f92-42ce-9cc4-208f326f2467",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "jsCode": "/**\n * This code processes an array of GitHub items (commits, issues, PRs)\n * and extracts relevant data. The patch_url is only added for commits.\n */\n\nconst results = $input.all().map(item => {\n  // The output object is defined without patch_url initially.\n  const output = {\n    type: '',\n    title: '',\n    body: '',\n    source: '',\n  };\n\n  const data = item.json;\n\n  // Case 1: The item is a commit.\n  if (data.commit && data.commit.message) {\n    output.type = 'commit';\n    const message = data.commit.message;\n    const messageParts = message.split('\\n\\n');\n    output.title = messageParts[0];\n    output.body = messageParts.slice(1).join('\\n\\n').trim();\n    output.source = data.html_url;\n\n    // ADD the patch_url property ONLY if it's a commit.\n    // We construct it from the commit's html_url.\n    if (data.html_url) {\n      output.patch_url = `${data.html_url}.patch`;\n    }\n\n  // Case 2: The item is an issue or pull request.\n  } else if (data.title) {\n    output.title = data.title;\n    output.body = data.body || '';\n    output.source = data.html_url;\n\n    if (data.pull_request) {\n      output.type = 'pull_request';\n    } else {\n      output.type = 'issue';\n    }\n    // The patch_url field is NOT added for issues or pull requests.\n  }\n\n  // Return the item if it's valid.\n  if (output.type && output.title) {\n    return { json: output };\n  }\n  \n  return null;\n\n}).filter(item => item !== null);\n\nreturn results;"
+      },
+      "id": "f9e427ed-e25d-49c8-ae46-1ad8093f2eb4",
+      "name": "Data Filtering",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        580,
+        800
+      ]
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1240,
+        800
+      ],
+      "id": "45095edf-5887-4282-a742-551933fe5859",
+      "name": "Merge1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const results = $input.all().map(item => {\n  const data = item.json;\n\n  // Check if the item is a commit.\n  if (data.type === 'commit' && data.source && data.title) {\n    // Create a new object with only the desired fields.\n    const output = {\n      patch_url: `${data.source}.patch`\n    };\n    \n    // Return the new, simplified commit object.\n    return { json: output };\n  }\n\n  // For any non-commit items, return null so they will be filtered out.\n  return null;\n\n}).filter(item => item !== null); // This filters out all the null entries.\n\n// Return the processed array, which now only contains commit data.\nreturn results;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        800,
+        725
+      ],
+      "id": "06dc0e7d-22e4-4da6-8837-363ee105e765",
+      "name": "Sort Patch_Url"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.patch_url }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1020,
+        725
+      ],
+      "id": "4090dbc0-f99b-4c2f-bef3-e9fb918f2f0f",
+      "name": "Get Patch data"
+    },
+    {
+      "parameters": {
+        "jsCode": "const patchItems = $input.all(0);\nconst allItems = $input.all(1);\n\n// Build map: SHA → patch content\nconst patchMap = new Map();\n\nfor (const patchItem of patchItems) {\n  const patchContent = patchItem.json?.data;\n  if (!patchContent) continue;\n\n  const shaMatch = patchContent.match(/^From\\s+([a-f0-9]{40})/m);\n  if (shaMatch && shaMatch[1]) {\n    const sha = shaMatch[1];\n    patchMap.set(sha, patchContent);\n  }\n}\n\n// Result array\nconst results = [];\n\nfor (const item of allItems) {\n  const json = item.json;\n\n  // Filter out raw patch-only items (typically have only `data`)\n  if ('data' in json && !('type' in json)) continue;\n\n  if (json.type === 'commit') {\n    // Extract commit SHA from the `source` URL\n    const sourceUrl = json.source || '';\n    const shaMatch = sourceUrl.match(/\\/commit\\/([a-f0-9]{40})$/);\n    const sha = shaMatch?.[1];\n\n    if (sha && patchMap.has(sha)) {\n      results.push({\n        json: {\n          ...json,\n          patch: patchMap.get(sha),\n          patch_url: undefined\n        }\n      });\n      continue;\n    }\n  }\n\n  // Pass all others (non-commit or unmatched commit) unchanged\n  results.push(item);\n}\n\nreturn results;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1460,
+        800
+      ],
+      "id": "e0b47621-b5a1-4b29-a118-286489469968",
+      "name": "Add Patch Data To Commits"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-flash",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        1980,
+        1020
+      ],
+      "id": "81387db5-45b9-48ad-ab0d-31f81c8d9498",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "02L2CJEV8D6cSwqt",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\n// Collect and stringify all JSON entries\nconst flatArray = items.map(item => item.json);\nconst stringifiedData = JSON.stringify(flatArray, null, 2); // Pretty format\n\nreturn [\n  {\n    json: {\n      data: stringifiedData\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1680,
+        800
+      ],
+      "id": "018cd15a-8904-46be-b457-ae55f500aecd",
+      "name": "Data Aggregation"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Using the GitHub activity data provided below, generate Scrum-style standup summaries for each contributor. Each summary should include:\n\n1. Username (or \"Unknown\" if not available)\n2. Accomplished: Closed issues, merged pull requests, important commits\n3. Ongoing Work: Open PRs, active issues, or in-progress efforts\n4. Blockers: Any obstacles, unanswered questions, or unresolved problems. Detect by:\n   - PRs waiting >2 days without review/approval\n   - Failed CI/CD checks blocking merges\n   - Unresolved merge conflicts\n   - Issues tagged \"blocked\"/\"help-wanted\"/\"question\"\n   - Comments mentioning external dependencies/waiting\n5. Next Steps: Suggest intelligent, actionable follow-ups — strongly emphasize collaboration:\n   - PR Reviews: Match reviewers by file expertise and previous contributions\n   - Pairing: \"Pair with @expert on [specific blocker]\" based on complementary skills\n   - Coordination: Identify cross-team dependencies from linked issues/PRs\n   - Follow-ups: Address specific reviewer feedback or stalled discussions\n\nFormat your reply strictly as JSON like this:\n[\n  {\n    \"user\": \"username\",\n    \"accomplished\": [\"...\"],\n    \"ongoing\": [\"...\"],\n    \"blockers\": [\"...\"],\n    \"next_steps\": [\"... (include collaboration calls to action)\"]\n  }\n]\n\nOnly include users with activity. Group all events per user. If username is missing, use \"Unknown\".\n\nGitHub Activity:\n{{ $json.data }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "You are an AI Scrum Master responsible for summarizing GitHub activity into daily standup reports. Analyze the raw activity logs and produce per-user summaries.  Blocker Detection Logic: - PRs without reviews after 2+ days - Failed CI/CD status checks - Merge conflicts in open PRs - Issues with \"blocked\"/\"help-wanted\"/\"question\"/\"bug\" labels - Comments indicating external dependencies, confusion, or waiting  Next Steps Intelligence: Generate smart collaborative recommendations: - PR Reviews: Match reviewers based on file paths they've modified, expertise areas, recent activity in related components - Pairing: Suggest when multiple people work on related issues, someone is blocked with another having expertise, or complex problems need joint solving - Coordination: Identify PR dependencies, cross-repo/team issues, shared component changes  For each contributor, include: - Accomplishments (merged PRs, closed issues, significant commits) - Ongoing work (open PRs/issues, in-progress efforts) - Blockers (delays, confusion, dependencies) - Next steps — strongly emphasize team collaboration like:   - Reviewing teammate PRs   - Pairing to resolve blockers   - Coordinating across dependencies   - Syncing on stalled items  Output only clean, structured JSON — no commentary or extra formatting."
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        1900,
+        800
+      ],
+      "id": "aff6912b-527b-4ddf-9e09-8adf0d87e5e3",
+      "name": "Basic LLM Chain"
+    },
+    {
+      "parameters": {
+        "jsCode": "// n8n JavaScript Code - Team Flash Cards for GitHub Activity\n// Parses the specific JSON structure and creates individual member cards\n\n// Extract and parse the input data\nconst input = $input.all();\nlet teamMembers;\n\ntry {\n  // Get the text content and extract JSON from the code block\n  const textContent = input[0].json.text;\n  const jsonMatch = textContent.match(/```json\\n([\\s\\S]*?)\\n```/);\n  \n  if (jsonMatch) {\n    teamMembers = JSON.parse(jsonMatch[1]);\n  } else {\n    throw new Error(\"No JSON code block found in input\");\n  }\n} catch (error) {\n  return [{\n    json: {\n      error: \"Failed to parse input: \" + error.message,\n      html_message: `<b>❌ Error parsing team data</b>\\n<i>${error.message}</i>`,\n      parse_mode: \"HTML\"\n    }\n  }];\n}\n\n// Helper function to format PR references\nfunction highlightPRs(text) {\n  return text.replace(/\\(PR #(\\d+)\\)/g, '(<code>PR #$1</code>)');\n}\n\n// Helper function to truncate long text while preserving PR references\nfunction smartTruncate(text, maxLength = 200) {\n  if (text.length <= maxLength) return text;\n  \n  // Try to cut at a sentence boundary\n  const truncated = text.substring(0, maxLength);\n  const lastPeriod = truncated.lastIndexOf('.');\n  const lastComma = truncated.lastIndexOf(',');\n  \n  if (lastPeriod > maxLength * 0.7) {\n    return text.substring(0, lastPeriod + 1);\n  } else if (lastComma > maxLength * 0.8) {\n    return text.substring(0, lastComma) + '...';\n  }\n  \n  return truncated + '...';\n}\n\n// Function to create individual member flash card\nfunction createMemberFlashCard(member, cardIndex, totalCards) {\n  const today = new Date().toLocaleDateString('en-US', { \n    weekday: 'short', \n    month: 'short', \n    day: 'numeric' \n  });\n  \n  // Card header\n  let card = `<b>👤 ${member.user}</b> <i>(${cardIndex}/${totalCards})</i>\\n`;\n  card += `<i>📅 ${today}</i>\\n\\n`;\n  \n  // Count activities for status indicator\n  const accomplishedCount = member.accomplished?.length || 0;\n  const ongoingCount = member.ongoing?.length || 0;\n  const blockersCount = member.blockers?.length || 0;\n  const nextStepsCount = member.next_steps?.length || 0;\n  \n  // Status indicator\n  if (blockersCount > 0) {\n    card += `🚨 <b>ATTENTION NEEDED</b> - ${blockersCount} blocker${blockersCount > 1 ? 's' : ''}\\n\\n`;\n  } else if (accomplishedCount + ongoingCount > 0) {\n    card += `✅ <b>ACTIVE</b> - ${accomplishedCount + ongoingCount} active item${(accomplishedCount + ongoingCount) > 1 ? 's' : ''}\\n\\n`;\n  } else {\n    card += `😴 <b>QUIET</b> - No recent activity\\n\\n`;\n  }\n  \n  // ACCOMPLISHED WORK\n  if (accomplishedCount > 0) {\n    card += `<b>✅ COMPLETED (${accomplishedCount})</b>\\n`;\n    member.accomplished.forEach((item, idx) => {\n      const formattedItem = highlightPRs(smartTruncate(item, 180));\n      card += `${idx + 1}. ${formattedItem}\\n`;\n    });\n    card += `\\n`;\n  }\n  \n  // ONGOING WORK\n  if (ongoingCount > 0) {\n    card += `<b>🔨 IN PROGRESS (${ongoingCount})</b>\\n`;\n    member.ongoing.forEach((item, idx) => {\n      const formattedItem = highlightPRs(smartTruncate(item, 180));\n      card += `${idx + 1}. ${formattedItem}\\n`;\n    });\n    card += `\\n`;\n  }\n  \n  // BLOCKERS (highlighted)\n  if (blockersCount > 0) {\n    card += `<b>🚨 BLOCKERS (${blockersCount})</b>\\n`;\n    member.blockers.forEach((item, idx) => {\n      const formattedItem = smartTruncate(item, 180);\n      card += `${idx + 1}. <i>${formattedItem}</i>\\n`;\n    });\n    card += `\\n`;\n  }\n  \n  // NEXT STEPS\n  if (nextStepsCount > 0) {\n    card += `<b>📋 NEXT STEPS (${nextStepsCount})</b>\\n`;\n    member.next_steps.forEach((item, idx) => {\n      const formattedItem = highlightPRs(smartTruncate(item, 180));\n      card += `${idx + 1}. ${formattedItem}\\n`;\n    });\n    card += `\\n`;\n  }\n  \n  // Quick summary footer\n  const summaryParts = [];\n  if (accomplishedCount > 0) summaryParts.push(`✅${accomplishedCount}`);\n  if (ongoingCount > 0) summaryParts.push(`🔨${ongoingCount}`);\n  if (blockersCount > 0) summaryParts.push(`🚨${blockersCount}`);\n  if (nextStepsCount > 0) summaryParts.push(`📋${nextStepsCount}`);\n  \n  if (summaryParts.length > 0) {\n    card += `<b>📊 Summary:</b> ${summaryParts.join(' • ')}`;\n  } else {\n    card += `<i>No activity to report</i>`;\n  }\n  \n  return card;\n}\n\n// Sort members - prioritize those with blockers, then by activity level\nconst sortedMembers = [...teamMembers].sort((a, b) => {\n  const aBlockers = a.blockers?.length || 0;\n  const bBlockers = b.blockers?.length || 0;\n  \n  // Blockers first\n  if (aBlockers !== bBlockers) {\n    return bBlockers - aBlockers;\n  }\n  \n  // Then by total activity\n  const aActivity = (a.accomplished?.length || 0) + (a.ongoing?.length || 0) + (a.next_steps?.length || 0);\n  const bActivity = (b.accomplished?.length || 0) + (b.ongoing?.length || 0) + (b.next_steps?.length || 0);\n  \n  return bActivity - aActivity;\n});\n\n// Generate the flash cards\nconst flashCards = [];\n\n// Create individual cards for each team member\nsortedMembers.forEach((member, index) => {\n  const accomplishedCount = member.accomplished?.length || 0;\n  const ongoingCount = member.ongoing?.length || 0;\n  const blockersCount = member.blockers?.length || 0;\n  const nextStepsCount = member.next_steps?.length || 0;\n  \n  const totalActivity = accomplishedCount + ongoingCount + nextStepsCount;\n  const hasBlockers = blockersCount > 0;\n  \n  flashCards.push({\n    json: {\n      message_type: \"member_flash_card\",\n      member: member.user,\n      html_message: createMemberFlashCard(member, index + 1, sortedMembers.length),\n      parse_mode: \"HTML\",\n      \n      // Metadata for routing/filtering\n      card_number: index + 1,\n      total_cards: sortedMembers.length,\n      has_blockers: hasBlockers,\n      activity_level: hasBlockers ? \"blocked\" : totalActivity > 3 ? \"high\" : totalActivity > 1 ? \"medium\" : totalActivity > 0 ? \"low\" : \"quiet\",\n      \n      // Detailed counts\n      accomplished_count: accomplishedCount,\n      ongoing_count: ongoingCount,\n      blockers_count: blockersCount,\n      next_steps_count: nextStepsCount,\n      total_activity: totalActivity,\n      \n      // Priority for notifications\n      priority: hasBlockers ? \"urgent\" : totalActivity > 2 ? \"high\" : \"normal\"\n    }\n  });\n});\n\nreturn flashCards;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2260,
+        800
+      ],
+      "id": "3a64f0b6-07ca-4c08-ac6e-a4dfbc76e250",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json['telegram-chat-id'] }}",
+        "text": "={{ $json.card }}",
+        "additionalFields": {
+          "parse_mode": "HTML"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2700,
+        800
+      ],
+      "id": "2d6440f3-facb-49b5-9253-54e8a3f9c9f8",
+      "name": "Send a text message",
+      "webhookId": "819995b8-248d-4442-a9fc-41f4e9dadfeb",
+      "credentials": {
+        "telegramApi": {
+          "id": "oo8D6fiKN0nnHiKt",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "return {\n  card: $json.html_message,\n  'telegram-chat-id': 'YOUR-CHAT-ID',\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2480,
+        800
+      ],
+      "id": "643131ab-6d4d-4bc3-a02d-e4969171c9c0",
+      "name": "Code1"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Run every weekday at 9am": {
+      "main": [
+        [
+          {
+            "node": "Variables",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Variables": {
+      "main": [
+        [
+          {
+            "node": "Github URL to items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Github URL to items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Github URL to items": {
+      "main": [
+        [
+          {
+            "node": "Get github commit",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get issues of a repository",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get pull requests of a repository",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get github commit": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get issues of a repository": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Get pull requests of a repository": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Data Filtering",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Data Filtering": {
+      "main": [
+        [
+          {
+            "node": "Sort Patch_Url",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge1": {
+      "main": [
+        [
+          {
+            "node": "Add Patch Data To Commits",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sort Patch_Url": {
+      "main": [
+        [
+          {
+            "node": "Get Patch data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Patch data": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add Patch Data To Commits": {
+      "main": [
+        [
+          {
+            "node": "Data Aggregation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Data Aggregation": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Code1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code1": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "af15cf80-96c6-4a39-9df8-a639867def84",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "83f2672e288cb1587c5ac570ad12800d41935f247667f0e6b0b6307b4db77fff"
+  },
+  "id": "ZX2dR0QuFgsYTCW6",
+  "tags": []
+}
