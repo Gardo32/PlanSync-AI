@@ -54,12 +54,11 @@ PlanSync-AI is composed of standalone workflow modules, each designed to automat
 | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- | -------- | ------------- |
 | 🔥 [Sprint Spark](modules/Sprint-Spark.md) | Uses LLMs to analyze recent GitHub changes and automatically generate categorized Trello cards for bugs, features, and tech debt.           | ✅        | `standalone/Sprint Spark.json` |
 | 🗣️ [Standup Synth](modules/Standup-Synth.md) | Replaces daily standups by summarizing GitHub activity and team progress into a digest, sent via Telegram or any webhook-compatible system. | ✅        | `standalone/Standup Synth.json` |
-| 📅 **Ceremony Scheduler**                  | Auto-schedules sprint ceremonies with agenda, backlog links, and summaries using calendar, Trello, and GitHub integrations.                 | 🛠️ In Progress | TBD |
-| ⚡ Issue Tracker Gateway               | Transforms GitHub issues into organized Trello cards with automated labeling, milestone tracking, and progress visualization.              | 🧪 Queue | TBD |
+| ⚡ Issue Tracker Gateway               | Transforms GitHub issues into organized Trello cards with automated labeling, milestone tracking, and progress visualization.              | 🛠️ In Progress | TBD |
 | 🧹 **Backlog Auditor**                     | Continuously checks backlog stories for missing estimates, unclear descriptions, or poor formatting using LLMs, and flags or fixes them.    | 🧪 Queue | TBD |
 | 📊 **Sprint Radar**                        | Monitors sprint health in real time, generating burndown charts, velocity graphs, and progress summaries daily.                             | 🧪 Queue | TBD |
 | ⏳ **Retro Tracker**                        | Tracks retrospective action items across boards and alerts responsible members if deadlines are missed or work stalls.                      | 🧪 Queue | TBD |
-| 📣 **Agile Whisperer**                     | Auto-posts Agile principles, reminders, and behavior nudges into Slack or Telegram based on team dynamics and metrics.                      | 🧪 Queue | TBD |
+| 📅 **Ceremony Scheduler**                  | Auto-schedules sprint ceremonies with agenda, backlog links, and summaries using calendar, Trello, and GitHub integrations.                 | 🧪 Queue | TBD | 
 
 > **Note**: Until the AI agent integration phase, each module operates independently. You can import and use any workflow without setting up others.
 
