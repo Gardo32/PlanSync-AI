@@ -8,7 +8,7 @@
 
 ---
 
-## � Project Structure
+## 📃 Project Structure
 
 ### `/standalone/` - Independent Workflow Modules
 Ready-to-use n8n workflows that can be imported and run immediately. Each workflow is completely self-contained and doesn't depend on other modules.
@@ -46,7 +46,7 @@ Detailed documentation for each workflow module, including setup guides, configu
 
 ---
 
-## �📦 Standalone Modules
+## 📦 Standalone Modules
 
 PlanSync-AI is composed of standalone workflow modules, each designed to automate specific Scrum Master responsibilities. **All modules are currently independent and can be used separately without dependencies.**
 
