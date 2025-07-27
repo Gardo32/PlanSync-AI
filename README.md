@@ -54,7 +54,9 @@ PlanSync-AI is composed of standalone workflow modules, each designed to automat
 | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- | -------- | ------------- |
 | 🔥 [Sprint Spark](modules/Sprint-Spark.md) | Uses LLMs to analyze recent GitHub changes and automatically generate categorized Trello cards for bugs, features, and tech debt.           | ✅        | `standalone/Sprint Spark.json` |
 | 🗣️ [Standup Synth](modules/Standup-Synth.md) | Replaces daily standups by summarizing GitHub activity and team progress into a digest, sent via Telegram or any webhook-compatible system. | ✅        | `standalone/Standup Synth.json` |
-| ⚡ Issue Tracker Gateway               | Transforms GitHub issues into organized Trello cards with automated labeling, milestone tracking, and progress visualization.              | 🛠️ In Progress | TBD |
+| 🎯 [Issue Tracker Gateway](modules/Issue-Tracker-Gateway.md) | Automatically creates Trello cards from GitHub issues using AI-enhanced descriptions and real-time webhook synchronization. | ✅        | `standalone/Issue Tracker Gateway.json` |
+integrations.                 | 🧪 Queue | TBD |
+| 🚨 [Blocker Watchdog](modules/Blocker-Watchdog.md) | Detects `#blocker` tags across GitHub, Trello, or Slack and opens resolution tasks automatically while notifying stakeholders.              | 🛠️ In Progress | TBD |
 | 🧹 **Backlog Auditor**                     | Continuously checks backlog stories for missing estimates, unclear descriptions, or poor formatting using LLMs, and flags or fixes them.    | 🧪 Queue | TBD |
 | 📊 **Sprint Radar**                        | Monitors sprint health in real time, generating burndown charts, velocity graphs, and progress summaries daily.                             | 🧪 Queue | TBD |
 | ⏳ **Retro Tracker**                        | Tracks retrospective action items across boards and alerts responsible members if deadlines are missed or work stalls.                      | 🧪 Queue | TBD |

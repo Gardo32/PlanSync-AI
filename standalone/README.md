@@ -18,6 +18,13 @@ This directory contains standalone n8n workflow files that can be imported and r
 - Scheduled to run automatically every weekday at 9 AM
 - **Status**: ✅ Complete and tested
 
+### 🎯 Issue Tracker Gateway (`Issue Tracker Gateway.json`)
+**Purpose**: Real-time GitHub-to-Trello issue synchronization
+- Automatically creates Trello cards from new GitHub issues
+- AI-enhanced descriptions and smart categorization
+- Real-time webhook processing with zero manual intervention
+- **Status**: ✅ Complete and tested
+
 ## 🚀 How to Use
 
 1. **Import to n8n**: Open your n8n instance and import the desired `.json` workflow file
